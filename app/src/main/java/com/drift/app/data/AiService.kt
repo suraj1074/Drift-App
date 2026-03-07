@@ -7,14 +7,19 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-/**
- * Talks to the Drift backend for AI features.
- * Falls back to simple local logic when backend is unreachable.
- */
+data class ParsedItem(val text: String, val category: String)
+
+data class FocusAction(val text: String, val why: String, val goal: String?)
+
+data class DailyFocus(
+    val greeting: String,
+    val actions: List<FocusAction>,
+    val parked: List<String>
+)
+
 class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
 
     companion object {
-        // TODO: Update to your deployed backend URL
         const val DEFAULT_BASE_URL = "http://10.0.2.2:8000"
 
         @Volatile
@@ -27,34 +32,24 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
         }
     }
 
-    /**
-     * Send raw brain dump text to backend, get structured items back.
-     */
     suspend fun parseDump(text: String): List<ParsedItem> = withContext(Dispatchers.IO) {
         try {
             val body = JSONObject().apply { put("text", text) }
             val response = post("$baseUrl/parse-dump", body)
             val items = response.getJSONArray("items")
-
             (0 until items.length()).map { i ->
                 val obj = items.getJSONObject(i)
-                ParsedItem(
-                    text = obj.getString("text"),
-                    category = obj.getString("category")
-                )
+                ParsedItem(obj.getString("text"), obj.getString("category"))
             }
         } catch (e: Exception) {
             fallbackParse(text)
         }
     }
 
-    /**
-     * Get daily focus recommendation from backend.
-     */
     suspend fun getDailyFocus(
         items: List<DriftItem>,
         goals: List<DriftItem>
-    ): String = withContext(Dispatchers.IO) {
+    ): DailyFocus = withContext(Dispatchers.IO) {
         try {
             val body = JSONObject().apply {
                 put("items", JSONArray().apply {
@@ -76,10 +71,28 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
                 })
             }
             val response = post("$baseUrl/daily-focus", body)
-            response.getString("focus")
+            parseFocusResponse(response)
         } catch (e: Exception) {
             fallbackFocus(items, goals)
         }
+    }
+
+    private fun parseFocusResponse(json: JSONObject): DailyFocus {
+        val actions = json.getJSONArray("actions")
+        val parked = json.optJSONArray("parked") ?: JSONArray()
+
+        return DailyFocus(
+            greeting = json.getString("greeting"),
+            actions = (0 until actions.length()).map { i ->
+                val a = actions.getJSONObject(i)
+                FocusAction(
+                    text = a.getString("text"),
+                    why = a.getString("why"),
+                    goal = if (a.isNull("goal")) null else a.optString("goal")
+                )
+            },
+            parked = (0 until parked.length()).map { parked.getString(it) }
+        )
     }
 
     private fun post(url: String, body: JSONObject): JSONObject {
@@ -90,12 +103,11 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
         conn.readTimeout = 30_000
         conn.doOutput = true
         conn.outputStream.write(body.toString().toByteArray())
-
         val responseText = conn.inputStream.bufferedReader().readText()
         return JSONObject(responseText)
     }
 
-    // --- Fallbacks (when backend is down) ---
+    // --- Fallbacks ---
 
     internal fun fallbackParse(text: String): List<ParsedItem> {
         return text.replace("\n", ",")
@@ -105,19 +117,26 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
             .map { ParsedItem(text = it, category = "task") }
     }
 
-    internal fun fallbackFocus(items: List<DriftItem>, goals: List<DriftItem>): String {
+    internal fun fallbackFocus(items: List<DriftItem>, goals: List<DriftItem>): DailyFocus {
         val stale = items.sortedBy { it.lastTouchedAt }.firstOrNull()
         return if (stale != null) {
-            "Hey — you haven't touched \"${stale.text}\" in a while. Maybe start there today?"
+            DailyFocus(
+                greeting = "Hey! Here's what I'd focus on today.",
+                actions = listOf(FocusAction(stale.text, "This has been untouched the longest.", null)),
+                parked = items.filter { it.id != stale.id }.take(3).map { it.text }
+            )
         } else if (goals.isNotEmpty()) {
-            "You've set some goals but haven't added any tasks yet. What's one small step you could take today?"
+            DailyFocus(
+                greeting = "You've set some goals — nice!",
+                actions = listOf(FocusAction("Add a few tasks", "Goals need small steps.", goals[0].text)),
+                parked = emptyList()
+            )
         } else {
-            "Nothing on your plate yet. Tap the + button and dump whatever's on your mind."
+            DailyFocus(
+                greeting = "Nothing on your plate yet.",
+                actions = listOf(FocusAction("Dump whatever's on your mind", "That's how we start.", null)),
+                parked = emptyList()
+            )
         }
     }
 }
-
-data class ParsedItem(
-    val text: String,
-    val category: String
-)

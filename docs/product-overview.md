@@ -28,19 +28,18 @@ People don't lack ambition — they lack follow-through. They start books, proje
 ## Architecture
 
 ```
-Flutter App  ←→  FastAPI Backend  ←→  Supabase (DB)
-                      ↓
-                 OpenAI API (AI thinking)
-                      ↓
-                 FCM (push notifications)
+Android App (Kotlin + Compose)  ←→  FastAPI Backend  ←→  Gemini 2.5 Flash
+                                          ↓
+                                    Supabase (DB, future)
+                                          ↓
+                                    FCM (push notifications, future)
 ```
 
 ## Cost (Prototype)
 
-- Supabase: Free tier (500MB DB, 50k auth users)
+- Gemini 2.5 Flash: Free tier (250 req/day, no credit card)
 - Render/Railway: Free tier for backend
-- FCM: Free, unlimited
-- OpenAI: ~$1-2 for testing volume
-- Google Play: Already have developer account
+- FCM: Free, unlimited (when added)
+- Google Play: Developer account already set up
 
-Total: ~$0-2/month
+Total: $0/month

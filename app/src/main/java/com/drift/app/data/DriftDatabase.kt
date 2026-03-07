@@ -19,6 +19,15 @@ data class DriftItem(
     val isGoal: Boolean = false
 )
 
+@Entity(tableName = "focus_cache")
+data class FocusCache(
+    @PrimaryKey val id: Int = 1,        // Always 1 — single row cache
+    val focusText: String,
+    val date: String,                    // YYYY-MM-DD — the day this was generated
+    val itemCount: Int,                  // Number of active items when generated
+    val goalCount: Int                   // Number of active goals when generated
+)
+
 // --- DAO ---
 
 @Dao
@@ -46,11 +55,19 @@ interface DriftDao {
 
     @Query("UPDATE items SET status = :status WHERE id = :id")
     suspend fun updateStatus(id: Long, status: String)
+
+    // --- Focus Cache ---
+
+    @Query("SELECT * FROM focus_cache WHERE id = 1")
+    suspend fun getFocusCache(): FocusCache?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun saveFocusCache(cache: FocusCache)
 }
 
 // --- Database ---
 
-@Database(entities = [DriftItem::class], version = 1)
+@Database(entities = [DriftItem::class, FocusCache::class], version = 2)
 abstract class DriftDatabase : RoomDatabase() {
     abstract fun driftDao(): DriftDao
 
@@ -60,6 +77,7 @@ abstract class DriftDatabase : RoomDatabase() {
         fun get(context: Context): DriftDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(context, DriftDatabase::class.java, "drift.db")
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
             }
