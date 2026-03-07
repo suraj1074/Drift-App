@@ -3,7 +3,7 @@
 ## What's Built
 
 ### Android App (Kotlin + Jetpack Compose)
-- Full Gradle project setup (compileSdk 34, minSdk 26)
+- Full Gradle project setup (compileSdk 35, minSdk 26, targetSdk 35)
 - Custom Drift purple theme matching the brand
 - Adaptive launcher icon (focus ring + drift trail)
 - 4 screens:
@@ -16,6 +16,13 @@
 - Focus caching: only calls backend on new day or when items/goals change, with manual refresh button
 - Network security config allowing cleartext to local dev server
 - Graceful fallback to local logic when backend is unreachable
+
+### Deployment & Distribution
+- App points to live backend at `https://drift-api-evce.onrender.com`
+- Release signing configured (keystore + ProGuard)
+- Application ID: `com.driftclarity.app` (unique for Play Store)
+- AAB bundle build via `./gradlew :app:bundleRelease`
+- Google Play Console: internal testing track set up
 
 ### Tests
 - Unit tests (AiServiceTest): fallback parsing, fallback focus logic, network failure handling
@@ -40,6 +47,4 @@ Room DB (local cache + items + goals)
 - Weekly reflection screen
 - Conscious abandonment prompts (auto-prompt after X days idle)
 - Voice input for brain dumps
-- Backend deployment (currently local only)
 - Supabase integration for cloud data sync across devices
-- Play Store internal testing track setup
