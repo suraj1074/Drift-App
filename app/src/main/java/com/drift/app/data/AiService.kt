@@ -6,6 +6,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.UUID
 
 data class ParsedItem(val text: String, val category: String, val goalHorizon: String? = null, val parentGoal: String? = null)
 
@@ -29,6 +30,8 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
 
     companion object {
         const val DEFAULT_BASE_URL = "https://drift-api-evce.onrender.com"
+        private const val PREFS_NAME = "drift_prefs"
+        private const val KEY_DEVICE_ID = "device_id"
 
         @Volatile
         private var INSTANCE: AiService? = null
@@ -37,6 +40,15 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
             return INSTANCE ?: synchronized(this) {
                 AiService().also { INSTANCE = it }
             }
+        }
+    }
+
+    var deviceId: String = UUID.randomUUID().toString()
+
+    fun initDeviceId(context: android.content.Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        deviceId = prefs.getString(KEY_DEVICE_ID, null) ?: UUID.randomUUID().toString().also {
+            prefs.edit().putString(KEY_DEVICE_ID, it).apply()
         }
     }
 
@@ -135,6 +147,7 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
         conn.setRequestProperty("Content-Type", "application/json")
+        conn.setRequestProperty("X-Device-Id", deviceId)
         conn.connectTimeout = 10_000
         conn.readTimeout = 30_000
         conn.doOutput = true
