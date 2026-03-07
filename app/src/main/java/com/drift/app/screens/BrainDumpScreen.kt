@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.drift.app.data.AiService
 import com.drift.app.data.DriftDatabase
 import com.drift.app.data.DriftItem
 import kotlinx.coroutines.launch
@@ -19,10 +20,12 @@ import kotlinx.coroutines.launch
 fun BrainDumpScreen(navController: NavController) {
     val context = LocalContext.current
     val db = remember { DriftDatabase.get(context) }
+    val ai = remember { AiService.getInstance() }
     val scope = rememberCoroutineScope()
 
     var text by remember { mutableStateOf("") }
     var saved by remember { mutableStateOf(false) }
+    var isProcessing by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -73,28 +76,33 @@ fun BrainDumpScreen(navController: NavController) {
                 onClick = {
                     if (text.isNotBlank()) {
                         scope.launch {
-                            // Split by newlines or periods to create separate items
-                            val entries = text
-                                .split("\n", ".", ",")
-                                .map { it.trim() }
-                                .filter { it.length > 2 }
-
-                            if (entries.isEmpty()) {
-                                db.driftDao().insert(DriftItem(text = text.trim()))
-                            } else {
-                                entries.forEach { entry ->
-                                    db.driftDao().insert(DriftItem(text = entry))
-                                }
+                            isProcessing = true
+                            val parsed = ai.parseDump(text)
+                            parsed.forEach { item ->
+                                db.driftDao().insert(
+                                    DriftItem(text = item.text, category = item.category)
+                                )
                             }
+                            isProcessing = false
                             saved = true
                             text = ""
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = text.isNotBlank()
+                enabled = text.isNotBlank() && !isProcessing
             ) {
-                Text("Dump it")
+                if (isProcessing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Processing...")
+                } else {
+                    Text("Dump it")
+                }
             }
 
             if (saved) {

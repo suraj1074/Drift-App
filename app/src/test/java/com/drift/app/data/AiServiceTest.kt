@@ -13,72 +13,109 @@ class AiServiceTest {
 
     @Before
     fun setup() {
-        service = AiService(apiKey = "")
+        // Use a bad URL so it always falls back to local logic
+        service = AiService(baseUrl = "http://localhost:0")
+    }
+
+    // --- Fallback Parse ---
+
+    @Test
+    fun `fallback parse splits comma-separated items`() {
+        val result = service.fallbackParse("file taxes, finish book, call mom")
+        assertEquals(3, result.size)
+        assertEquals("file taxes", result[0].text)
+        assertEquals("finish book", result[1].text)
+        assertEquals("call mom", result[2].text)
     }
 
     @Test
-    fun `fallback suggests stale item when tasks exist`() = runBlocking {
+    fun `fallback parse splits newline-separated items`() {
+        val result = service.fallbackParse("file taxes\nfinish book\ncall mom")
+        assertEquals(3, result.size)
+    }
+
+    @Test
+    fun `fallback parse filters short fragments`() {
+        val result = service.fallbackParse("file taxes, ok, , finish book")
+        assertEquals(2, result.size)
+    }
+
+    @Test
+    fun `fallback parse assigns task category to all items`() {
+        val result = service.fallbackParse("file taxes, start running")
+        assertTrue(result.all { it.category == "task" })
+    }
+
+    // --- Fallback Focus ---
+
+    @Test
+    fun `fallback focus suggests stale item when tasks exist`() {
         val items = listOf(
             DriftItem(
-                id = 1,
-                text = "File taxes",
-                lastTouchedAt = LocalDateTime.now().minusDays(10)
-                    .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                id = 1, text = "File taxes",
+                lastTouchedAt = LocalDateTime.now().minusDays(10).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             ),
             DriftItem(
-                id = 2,
-                text = "Go running",
-                lastTouchedAt = LocalDateTime.now().minusDays(2)
-                    .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                id = 2, text = "Go running",
+                lastTouchedAt = LocalDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             )
         )
-        val goals = listOf(
-            DriftItem(id = 3, text = "Get fit", isGoal = true, goalHorizon = "month")
-        )
 
-        val result = service.getDailyFocus(items, goals)
-
-        assertTrue("Should mention the stale item", result.contains("File taxes"))
+        val result = service.fallbackFocus(items, emptyList())
+        assertTrue("Should mention stale item", result.contains("File taxes"))
     }
 
     @Test
-    fun `fallback prompts to add tasks when only goals exist`() = runBlocking {
-        val items = emptyList<DriftItem>()
+    fun `fallback focus prompts when only goals exist`() {
         val goals = listOf(
             DriftItem(id = 1, text = "Ship MVP", isGoal = true, goalHorizon = "month")
         )
 
-        val result = service.getDailyFocus(items, goals)
-
-        assertTrue("Should prompt about goals without tasks", result.contains("goals"))
+        val result = service.fallbackFocus(emptyList(), goals)
+        assertTrue("Should mention goals", result.contains("goals"))
     }
 
     @Test
-    fun `fallback prompts to dump when nothing exists`() = runBlocking {
-        val result = service.getDailyFocus(emptyList(), emptyList())
-
-        assertTrue("Should prompt to add items", result.contains("dump") || result.contains("plate"))
+    fun `fallback focus prompts to dump when empty`() {
+        val result = service.fallbackFocus(emptyList(), emptyList())
+        assertTrue(result.contains("dump") || result.contains("plate"))
     }
 
     @Test
-    fun `fallback picks oldest item as most stale`() = runBlocking {
+    fun `fallback focus picks oldest item`() {
         val items = listOf(
             DriftItem(
-                id = 1,
-                text = "Recent task",
-                lastTouchedAt = LocalDateTime.now().minusDays(1)
-                    .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                id = 1, text = "Recent task",
+                lastTouchedAt = LocalDateTime.now().minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             ),
             DriftItem(
-                id = 2,
-                text = "Old forgotten task",
-                lastTouchedAt = LocalDateTime.now().minusDays(30)
-                    .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                id = 2, text = "Old forgotten task",
+                lastTouchedAt = LocalDateTime.now().minusDays(30).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            )
+        )
+
+        val result = service.fallbackFocus(items, emptyList())
+        assertTrue("Should pick oldest", result.contains("Old forgotten task"))
+    }
+
+    // --- Network fallback ---
+
+    @Test
+    fun `getDailyFocus falls back when backend unreachable`() = runBlocking {
+        val items = listOf(
+            DriftItem(
+                id = 1, text = "Stale task",
+                lastTouchedAt = LocalDateTime.now().minusDays(5).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             )
         )
 
         val result = service.getDailyFocus(items, emptyList())
+        assertTrue("Should fallback gracefully", result.contains("Stale task"))
+    }
 
-        assertTrue("Should pick the oldest item", result.contains("Old forgotten task"))
+    @Test
+    fun `parseDump falls back when backend unreachable`() = runBlocking {
+        val result = service.parseDump("file taxes, read a book")
+        assertEquals(2, result.size)
     }
 }

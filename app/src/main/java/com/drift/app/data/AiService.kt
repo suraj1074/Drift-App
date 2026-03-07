@@ -8,12 +8,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Calls OpenAI API to get daily focus recommendations.
- * For prototype — replace API key with your own.
+ * Talks to the Drift backend for AI features.
+ * Falls back to simple local logic when backend is unreachable.
  */
-class AiService(var apiKey: String = "") {
+class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
 
     companion object {
+        // TODO: Update to your deployed backend URL
+        const val DEFAULT_BASE_URL = "http://10.0.2.2:8000"
+
         @Volatile
         private var INSTANCE: AiService? = null
 
@@ -24,77 +27,85 @@ class AiService(var apiKey: String = "") {
         }
     }
 
+    /**
+     * Send raw brain dump text to backend, get structured items back.
+     */
+    suspend fun parseDump(text: String): List<ParsedItem> = withContext(Dispatchers.IO) {
+        try {
+            val body = JSONObject().apply { put("text", text) }
+            val response = post("$baseUrl/parse-dump", body)
+            val items = response.getJSONArray("items")
+
+            (0 until items.length()).map { i ->
+                val obj = items.getJSONObject(i)
+                ParsedItem(
+                    text = obj.getString("text"),
+                    category = obj.getString("category")
+                )
+            }
+        } catch (e: Exception) {
+            fallbackParse(text)
+        }
+    }
+
+    /**
+     * Get daily focus recommendation from backend.
+     */
     suspend fun getDailyFocus(
         items: List<DriftItem>,
         goals: List<DriftItem>
     ): String = withContext(Dispatchers.IO) {
-
-        if (apiKey.isBlank()) {
-            return@withContext fallbackFocus(items, goals)
-        }
-
-        val prompt = buildPrompt(items, goals)
-
         try {
             val body = JSONObject().apply {
-                put("model", "gpt-4o-mini")
-                put("messages", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("role", "system")
-                        put("content", """You are Drift, a calm and thoughtful AI companion. 
-                            |Your job is to look at everything on someone's plate and their goals, 
-                            |then pick the 1-2 things they should focus on TODAY. 
-                            |Be specific, warm, and brief. No bullet lists — write like a friend texting. 
-                            |If something has been idle for a while, mention it gently.""".trimMargin())
-                    })
-                    put(JSONObject().apply {
-                        put("role", "user")
-                        put("content", prompt)
-                    })
+                put("items", JSONArray().apply {
+                    items.forEach { item ->
+                        put(JSONObject().apply {
+                            put("text", item.text)
+                            put("created_at", item.createdAt)
+                            put("last_touched_at", item.lastTouchedAt)
+                        })
+                    }
                 })
-                put("max_tokens", 300)
-                put("temperature", 0.7)
+                put("goals", JSONArray().apply {
+                    goals.forEach { goal ->
+                        put(JSONObject().apply {
+                            put("text", goal.text)
+                            put("horizon", goal.goalHorizon ?: "week")
+                        })
+                    }
+                })
             }
-
-            val conn = URL("https://api.openai.com/v1/chat/completions").openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.setRequestProperty("Authorization", "Bearer $apiKey")
-            conn.doOutput = true
-            conn.outputStream.write(body.toString().toByteArray())
-
-            val response = conn.inputStream.bufferedReader().readText()
-            val json = JSONObject(response)
-            json.getJSONArray("choices")
-                .getJSONObject(0)
-                .getJSONObject("message")
-                .getString("content")
-                .trim()
+            val response = post("$baseUrl/daily-focus", body)
+            response.getString("focus")
         } catch (e: Exception) {
             fallbackFocus(items, goals)
         }
     }
 
-    private fun buildPrompt(items: List<DriftItem>, goals: List<DriftItem>): String {
-        val goalsText = if (goals.isEmpty()) "No goals set yet."
-        else goals.joinToString("\n") { "- ${it.text} (${it.goalHorizon ?: "general"})" }
+    private fun post(url: String, body: JSONObject): JSONObject {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.connectTimeout = 10_000
+        conn.readTimeout = 30_000
+        conn.doOutput = true
+        conn.outputStream.write(body.toString().toByteArray())
 
-        val itemsText = if (items.isEmpty()) "Nothing on their plate yet."
-        else items.joinToString("\n") { "- ${it.text} (added: ${it.createdAt.take(10)}, last touched: ${it.lastTouchedAt.take(10)})" }
-
-        return """Here's what this person has on their plate:
-            |
-            |GOALS:
-            |$goalsText
-            |
-            |TASKS & ITEMS:
-            |$itemsText
-            |
-            |Based on their goals and what's been drifting, what should they focus on today? Pick 1-2 things max.""".trimMargin()
+        val responseText = conn.inputStream.bufferedReader().readText()
+        return JSONObject(responseText)
     }
 
-    private fun fallbackFocus(items: List<DriftItem>, goals: List<DriftItem>): String {
-        // Simple fallback when no API key: pick the most stale item
+    // --- Fallbacks (when backend is down) ---
+
+    internal fun fallbackParse(text: String): List<ParsedItem> {
+        return text.replace("\n", ",")
+            .split(",")
+            .map { it.trim() }
+            .filter { it.length > 2 }
+            .map { ParsedItem(text = it, category = "task") }
+    }
+
+    internal fun fallbackFocus(items: List<DriftItem>, goals: List<DriftItem>): String {
         val stale = items.sortedBy { it.lastTouchedAt }.firstOrNull()
         return if (stale != null) {
             "Hey — you haven't touched \"${stale.text}\" in a while. Maybe start there today?"
@@ -105,3 +116,8 @@ class AiService(var apiKey: String = "") {
         }
     }
 }
+
+data class ParsedItem(
+    val text: String,
+    val category: String
+)
