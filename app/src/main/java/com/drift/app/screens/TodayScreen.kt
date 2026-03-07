@@ -2,6 +2,7 @@ package com.drift.app.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,15 +43,17 @@ fun TodayScreen(navController: NavController) {
             val result = ai.getDailyFocus(items, goals)
             focus = result
 
-            // Cache it
-            db.driftDao().saveFocusCache(
-                FocusCache(
-                    focusText = serializeFocus(result),
-                    date = LocalDate.now().toString(),
-                    itemCount = items.size,
-                    goalCount = goals.size
+            // Only cache real AI responses, not fallbacks
+            if (!result.isFallback) {
+                db.driftDao().saveFocusCache(
+                    FocusCache(
+                        focusText = serializeFocus(result),
+                        date = LocalDate.now().toString(),
+                        itemCount = items.size,
+                        goalCount = goals.size
+                    )
                 )
-            )
+            }
             isLoading = false
         }
     }
@@ -78,10 +82,22 @@ fun TodayScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Drift") },
+                title = {
+                    Text(
+                        "drift",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                },
                 actions = {
                     IconButton(onClick = { fetchFocus() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -90,7 +106,10 @@ fun TodayScreen(navController: NavController) {
             )
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 0.dp
+            ) {
                 NavigationBarItem(
                     selected = true, onClick = { },
                     icon = { Icon(Icons.Default.Star, contentDescription = "Today") },
@@ -115,9 +134,15 @@ fun TodayScreen(navController: NavController) {
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(12.dp))
-                    Text("Thinking about your day...", color = MaterialTheme.colorScheme.outline)
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Thinking about your day…",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         } else {
@@ -126,55 +151,62 @@ fun TodayScreen(navController: NavController) {
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(20.dp)
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
-                // Greeting
+                // Greeting — like a friend texting
                 Text(
                     text = focus?.greeting ?: "Hey!",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    style = MaterialTheme.typography.headlineMedium
                 )
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(28.dp))
 
-                // Focus actions
+                // Focus section
                 Text(
-                    "Focus today",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 1.sp
+                    "FOCUS TODAY",
+                    style = MaterialTheme.typography.titleSmall
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
 
                 focus?.actions?.forEach { action ->
                     Card(
-                        Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Column(Modifier.padding(16.dp)) {
+                        Column(Modifier.padding(20.dp)) {
                             Text(
-                                action.text,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                "✦ ${action.text}",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(6.dp))
                             Text(
                                 action.why,
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                             )
                             if (action.goal != null) {
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    "🎯 ${action.goal}",
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Spacer(Modifier.height(10.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                ) {
+                                    Text(
+                                        "🎯 ${action.goal}",
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -183,41 +215,64 @@ fun TodayScreen(navController: NavController) {
                 // Parked items
                 val parked = focus?.parked ?: emptyList()
                 if (parked.isNotEmpty()) {
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(24.dp))
                     Text(
-                        "Parked for now",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.outline,
-                        letterSpacing = 1.sp
+                        "PARKED FOR NOW",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
 
                     parked.forEach { item ->
-                        Card(
-                            Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Text(
-                                item,
-                                Modifier.padding(14.dp),
-                                fontSize = 14.sp,
+                                "💤 $item",
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(28.dp))
 
-                OutlinedButton(
+                // Goals link — feels like part of the flow, not an orphan button
+                Surface(
                     onClick = { navController.navigate("goals") },
-                    Modifier.align(Alignment.CenterHorizontally)
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
-                    Text("My Goals")
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🌱", fontSize = 20.sp)
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "My Goals",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                "What would make this week a win?",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 }
+
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -256,6 +311,6 @@ private fun deserializeFocus(s: String): DailyFocus? {
             parked = (0 until parked.length()).map { parked.getString(it) }
         )
     } catch (e: Exception) {
-        null // Old format or corrupt — force a fresh fetch
+        null
     }
 }

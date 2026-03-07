@@ -3,12 +3,14 @@ package com.drift.app.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -39,7 +41,10 @@ fun GoalsScreen(navController: NavController) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { padding ->
@@ -50,35 +55,63 @@ fun GoalsScreen(navController: NavController) {
                 .padding(24.dp)
         ) {
             Text(
-                text = "What would make this ${selectedHorizon} a win?",
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onBackground
+                text = "What would make this $selectedHorizon a win?",
+                style = MaterialTheme.typography.headlineMedium
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Horizon selector
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("week", "month", "quarter").forEach { horizon ->
+                listOf("week" to "🗓️ Week", "month" to "📅 Month", "quarter" to "🎯 Quarter").forEach { (value, label) ->
                     FilterChip(
-                        selected = selectedHorizon == horizon,
-                        onClick = { selectedHorizon = horizon },
-                        label = { Text("This $horizon") }
+                        selected = selectedHorizon == value,
+                        onClick = { selectedHorizon = value },
+                        label = { Text(label, fontSize = 13.sp) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            OutlinedTextField(
-                value = goalText,
-                onValueChange = { goalText = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g. File my taxes and run 3 times") },
-                singleLine = true
-            )
+            // Input area
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TextField(
+                    value = goalText,
+                    onValueChange = { goalText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            "e.g. File my taxes and run 3 times",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        )
+                    },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    ),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 15.sp
+                    )
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Button(
                 onClick = {
@@ -97,35 +130,49 @@ fun GoalsScreen(navController: NavController) {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = goalText.isNotBlank()
+                enabled = goalText.isNotBlank(),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 14.dp)
             ) {
-                Text("Set Goal")
+                Text("Set Goal 🌱", fontSize = 15.sp)
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             if (goals.isNotEmpty()) {
-                Text("Active Goals", fontSize = 14.sp, color = MaterialTheme.colorScheme.outline)
-                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "ACTIVE GOALS",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                Spacer(modifier = Modifier.height(10.dp))
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(goals) { goal ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(16.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(goal.text, fontSize = 16.sp)
+                                    Text(
+                                        goal.text,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         "This ${goal.goalHorizon ?: "week"}",
-                                        fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.primary
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
                                     )
                                 }
                                 TextButton(onClick = {
@@ -134,7 +181,7 @@ fun GoalsScreen(navController: NavController) {
                                         goals = db.driftDao().getActiveGoals()
                                     }
                                 }) {
-                                    Text("Done")
+                                    Text("Done ✓")
                                 }
                             }
                         }

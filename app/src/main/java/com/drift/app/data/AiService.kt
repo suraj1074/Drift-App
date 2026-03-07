@@ -14,7 +14,8 @@ data class FocusAction(val text: String, val why: String, val goal: String?)
 data class DailyFocus(
     val greeting: String,
     val actions: List<FocusAction>,
-    val parked: List<String>
+    val parked: List<String>,
+    val isFallback: Boolean = false
 )
 
 class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
@@ -73,13 +74,14 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
             val response = post("$baseUrl/daily-focus", body)
             parseFocusResponse(response)
         } catch (e: Exception) {
-            fallbackFocus(items, goals)
+            fallbackFocus(items, goals).copy(isFallback = true)
         }
     }
 
     private fun parseFocusResponse(json: JSONObject): DailyFocus {
         val actions = json.getJSONArray("actions")
         val parked = json.optJSONArray("parked") ?: JSONArray()
+        val source = json.optString("source", "ai")
 
         return DailyFocus(
             greeting = json.getString("greeting"),
@@ -91,7 +93,8 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
                     goal = if (a.isNull("goal")) null else a.optString("goal")
                 )
             },
-            parked = (0 until parked.length()).map { parked.getString(it) }
+            parked = (0 until parked.length()).map { parked.getString(it) },
+            isFallback = source != "ai"
         )
     }
 
