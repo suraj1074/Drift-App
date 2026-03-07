@@ -21,20 +21,21 @@ class AiServiceTest {
     @Test
     fun `fallback parse splits comma-separated items`() {
         val result = service.fallbackParse("file taxes, finish book, call mom")
-        assertEquals(3, result.size)
-        assertEquals("file taxes", result[0].text)
+        assertEquals(3, result.newItems.size)
+        assertEquals("file taxes", result.newItems[0].text)
     }
 
     @Test
     fun `fallback parse filters short fragments`() {
         val result = service.fallbackParse("file taxes, ok, , finish book")
-        assertEquals(2, result.size)
+        assertEquals(2, result.newItems.size)
     }
 
     @Test
     fun `fallback parse assigns task category`() {
         val result = service.fallbackParse("file taxes, start running")
-        assertTrue(result.all { it.category == "task" })
+        assertTrue(result.newItems.all { it.category == "task" })
+        assertTrue(result.updates.isEmpty())
     }
 
     // --- Fallback Focus ---
@@ -85,6 +86,7 @@ class AiServiceTest {
     @Test
     fun `parseDump falls back when backend unreachable`() = runBlocking {
         val result = service.parseDump("file taxes, read a book")
-        assertEquals(2, result.size)
+        assertEquals(2, result.newItems.size)
+        assertTrue(result.updates.isEmpty())
     }
 }

@@ -67,7 +67,7 @@ interface DriftDao {
 
 // --- Database ---
 
-@Database(entities = [DriftItem::class, FocusCache::class], version = 2)
+@Database(entities = [DriftItem::class, FocusCache::class], version = 3)
 abstract class DriftDatabase : RoomDatabase() {
     abstract fun driftDao(): DriftDao
 

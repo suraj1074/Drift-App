@@ -7,7 +7,14 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class ParsedItem(val text: String, val category: String)
+data class ParsedItem(val text: String, val category: String, val goalHorizon: String? = null, val parentGoal: String? = null)
+
+data class DumpUpdate(val id: Long, val action: String)
+
+data class DumpResult(
+    val newItems: List<ParsedItem>,
+    val updates: List<DumpUpdate>
+)
 
 data class FocusAction(val text: String, val why: String, val goal: String?)
 
@@ -33,15 +40,41 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
         }
     }
 
-    suspend fun parseDump(text: String): List<ParsedItem> = withContext(Dispatchers.IO) {
+    suspend fun parseDump(text: String, existingItems: List<DriftItem> = emptyList()): DumpResult = withContext(Dispatchers.IO) {
         try {
-            val body = JSONObject().apply { put("text", text) }
-            val response = post("$baseUrl/parse-dump", body)
-            val items = response.getJSONArray("items")
-            (0 until items.length()).map { i ->
-                val obj = items.getJSONObject(i)
-                ParsedItem(obj.getString("text"), obj.getString("category"))
+            val body = JSONObject().apply {
+                put("text", text)
+                put("existing_items", JSONArray().apply {
+                    existingItems.forEach { item ->
+                        put(JSONObject().apply {
+                            put("id", item.id)
+                            put("text", item.text)
+                            put("category", item.category ?: "task")
+                            put("is_goal", item.isGoal)
+                        })
+                    }
+                })
             }
+            val response = post("$baseUrl/parse-dump", body)
+
+            val newItems = response.optJSONArray("new_items") ?: JSONArray()
+            val updates = response.optJSONArray("updates") ?: JSONArray()
+
+            DumpResult(
+                newItems = (0 until newItems.length()).map { i ->
+                    val obj = newItems.getJSONObject(i)
+                    ParsedItem(
+                        text = obj.getString("text"),
+                        category = obj.getString("category"),
+                        goalHorizon = if (obj.isNull("goal_horizon")) null else obj.optString("goal_horizon"),
+                        parentGoal = if (obj.isNull("parent_goal")) null else obj.optString("parent_goal")
+                    )
+                },
+                updates = (0 until updates.length()).map { i ->
+                    val obj = updates.getJSONObject(i)
+                    DumpUpdate(id = obj.getLong("id"), action = obj.getString("action"))
+                }
+            )
         } catch (e: Exception) {
             fallbackParse(text)
         }
@@ -112,12 +145,15 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
 
     // --- Fallbacks ---
 
-    internal fun fallbackParse(text: String): List<ParsedItem> {
-        return text.replace("\n", ",")
+    internal fun fallbackParse(text: String): DumpResult {
+        val entries = text.replace("\n", ",")
             .split(",")
             .map { it.trim() }
             .filter { it.length > 2 }
-            .map { ParsedItem(text = it, category = "task") }
+        return DumpResult(
+            newItems = entries.map { ParsedItem(text = it, category = "task") },
+            updates = emptyList()
+        )
     }
 
     internal fun fallbackFocus(items: List<DriftItem>, goals: List<DriftItem>): DailyFocus {

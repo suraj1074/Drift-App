@@ -15,6 +15,7 @@ import androidx.navigation.NavController
 import com.drift.app.data.AiService
 import com.drift.app.data.DriftDatabase
 import com.drift.app.data.DriftItem
+import com.drift.app.data.DumpResult
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,12 +107,34 @@ fun BrainDumpScreen(navController: NavController) {
                     if (text.isNotBlank()) {
                         scope.launch {
                             isProcessing = true
-                            val parsed = ai.parseDump(text)
-                            parsed.forEach { item ->
+                            // Send existing items so AI can detect updates vs new stuff
+                            val existingTasks = db.driftDao().getActiveTasks()
+                            val existingGoals = db.driftDao().getActiveGoals()
+                            val allExisting = existingTasks + existingGoals
+
+                            val result = ai.parseDump(text, allExisting)
+
+                            // Process updates on existing items
+                            result.updates.forEach { update ->
+                                when (update.action) {
+                                    "done" -> db.driftDao().updateStatus(update.id, "done")
+                                    "let_go" -> db.driftDao().updateStatus(update.id, "let_go")
+                                    "touch" -> db.driftDao().touch(update.id)
+                                }
+                            }
+
+                            // Insert new items
+                            result.newItems.forEach { item ->
                                 db.driftDao().insert(
-                                    DriftItem(text = item.text, category = item.category)
+                                    DriftItem(
+                                        text = item.text,
+                                        category = item.category,
+                                        isGoal = item.category == "goal",
+                                        goalHorizon = item.goalHorizon
+                                    )
                                 )
                             }
+
                             isProcessing = false
                             saved = true
                             text = ""

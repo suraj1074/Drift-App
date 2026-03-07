@@ -40,11 +40,14 @@ fun TodayScreen(navController: NavController) {
             isLoading = true
             val items = db.driftDao().getActiveTasks()
             val goals = db.driftDao().getActiveGoals()
+            android.util.Log.d("Drift", "fetchFocus: calling backend with ${items.size} items, ${goals.size} goals")
             val result = ai.getDailyFocus(items, goals)
+            android.util.Log.d("Drift", "fetchFocus: got result, isFallback=${result.isFallback}, greeting=${result.greeting}")
             focus = result
 
             // Only cache real AI responses, not fallbacks
             if (!result.isFallback) {
+                android.util.Log.d("Drift", "fetchFocus: caching result")
                 db.driftDao().saveFocusCache(
                     FocusCache(
                         focusText = serializeFocus(result),
@@ -53,28 +56,40 @@ fun TodayScreen(navController: NavController) {
                         goalCount = goals.size
                     )
                 )
+            } else {
+                android.util.Log.d("Drift", "fetchFocus: NOT caching (fallback)")
             }
             isLoading = false
         }
     }
 
     LaunchedEffect(Unit) {
-        val items = db.driftDao().getActiveTasks()
-        val goals = db.driftDao().getActiveGoals()
-        val today = LocalDate.now().toString()
-        val cache = db.driftDao().getFocusCache()
+        try {
+            val items = db.driftDao().getActiveTasks()
+            val goals = db.driftDao().getActiveGoals()
+            val today = LocalDate.now().toString()
+            val cache = db.driftDao().getFocusCache()
 
-        if (cache != null && cache.date == today
-            && cache.itemCount == items.size && cache.goalCount == goals.size
-        ) {
-            val cached = deserializeFocus(cache.focusText)
-            if (cached != null) {
-                focus = cached
-                isLoading = false
+            android.util.Log.d("Drift", "Cache check: cache=$cache, items=${items.size}, goals=${goals.size}, today=$today")
+
+            if (cache != null && cache.date == today
+                && cache.itemCount == items.size && cache.goalCount == goals.size
+            ) {
+                val cached = deserializeFocus(cache.focusText)
+                if (cached != null) {
+                    android.util.Log.d("Drift", "Using cached focus")
+                    focus = cached
+                    isLoading = false
+                } else {
+                    android.util.Log.d("Drift", "Cache corrupt, fetching fresh")
+                    fetchFocus()
+                }
             } else {
+                android.util.Log.d("Drift", "Cache miss, fetching fresh")
                 fetchFocus()
             }
-        } else {
+        } catch (e: Exception) {
+            android.util.Log.e("Drift", "LaunchedEffect error: ${e.message}", e)
             fetchFocus()
         }
     }
