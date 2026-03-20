@@ -109,6 +109,11 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
         items: List<DriftItem>,
         goals: List<DriftItem>
     ): DailyFocus = withContext(Dispatchers.IO) {
+        // No items and no goals — skip the API call entirely
+        if (items.isEmpty() && goals.isEmpty()) {
+            return@withContext fallbackFocus(items, goals).copy(isFallback = true)
+        }
+
         try {
             val body = JSONObject().apply {
                 put("items", JSONArray().apply {

@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -90,6 +91,12 @@ fun TodayScreen(navController: NavController) {
     }
 
     LaunchedEffect(Unit) {
+        // Already have focus in memory (e.g. navigated back) — skip everything
+        if (focus != null) {
+            isLoading = false
+            return@LaunchedEffect
+        }
+
         try {
             val items = db.driftDao().getActiveTasks()
             val goals = db.driftDao().getActiveGoals()
@@ -361,6 +368,17 @@ fun TodayScreen(navController: NavController) {
                         "Bring your own Gemini API key for faster, higher-quality AI responses. Leave empty to use the free default.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                    Text(
+                        "How do I get a key? →",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.clickable {
+                            uriHandler.openUri("https://suraj1074.github.io/Drift-Website/#setup")
+                        }
                     )
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
