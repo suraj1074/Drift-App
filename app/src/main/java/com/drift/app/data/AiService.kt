@@ -32,6 +32,7 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
         const val DEFAULT_BASE_URL = "https://drift-api-evce.onrender.com"
         private const val PREFS_NAME = "drift_prefs"
         private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_GEMINI_API_KEY = "gemini_api_key"
 
         @Volatile
         private var INSTANCE: AiService? = null
@@ -44,12 +45,24 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
     }
 
     var deviceId: String = UUID.randomUUID().toString()
+    var geminiApiKey: String? = null
+        private set
 
     fun initDeviceId(context: android.content.Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
         deviceId = prefs.getString(KEY_DEVICE_ID, null) ?: UUID.randomUUID().toString().also {
             prefs.edit().putString(KEY_DEVICE_ID, it).apply()
         }
+        geminiApiKey = prefs.getString(KEY_GEMINI_API_KEY, null)
+    }
+
+    fun setGeminiApiKey(context: android.content.Context, key: String?) {
+        geminiApiKey = key?.takeIf { it.isNotBlank() }
+        context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .edit().apply {
+                if (geminiApiKey != null) putString(KEY_GEMINI_API_KEY, geminiApiKey)
+                else remove(KEY_GEMINI_API_KEY)
+            }.apply()
     }
 
     suspend fun parseDump(text: String, existingItems: List<DriftItem> = emptyList()): DumpResult = withContext(Dispatchers.IO) {
@@ -148,8 +161,9 @@ class AiService(var baseUrl: String = DEFAULT_BASE_URL) {
         conn.requestMethod = "POST"
         conn.setRequestProperty("Content-Type", "application/json")
         conn.setRequestProperty("X-Device-Id", deviceId)
-        conn.connectTimeout = 10_000
-        conn.readTimeout = 30_000
+        geminiApiKey?.let { conn.setRequestProperty("X-Gemini-Key", it) }
+        conn.connectTimeout = 15_000
+        conn.readTimeout = 90_000
         conn.doOutput = true
         conn.outputStream.write(body.toString().toByteArray())
         val responseText = conn.inputStream.bufferedReader().readText()

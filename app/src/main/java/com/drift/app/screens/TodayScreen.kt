@@ -1,5 +1,9 @@
 package com.drift.app.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,13 +21,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.drift.app.data.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.time.LocalDate
+
+private val loadingQuotes = listOf(
+    "Two things, not twenty.",
+    "What matters most today?",
+    "Clarity is a superpower.",
+    "Less noise, more signal.",
+    "You don't need to do it all.",
+    "Small steps, big shifts.",
+    "Focus is saying no to good ideas.",
+    "Done is better than perfect.",
+    "What would make today a win?",
+    "Progress, not perfection.",
+    "The best time to start is now.",
+    "One thing at a time.",
+    "Breathe. Then begin.",
+    "Your future self will thank you.",
+    "Drift less, do more."
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +59,7 @@ fun TodayScreen(navController: NavController) {
 
     var focus by remember { mutableStateOf<DailyFocus?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var showSettings by remember { mutableStateOf(false) }
 
     fun fetchFocus() {
         scope.launch {
@@ -107,6 +133,13 @@ fun TodayScreen(navController: NavController) {
                     )
                 },
                 actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     IconButton(onClick = { fetchFocus() }) {
                         Icon(
                             Icons.Default.Refresh,
@@ -144,6 +177,15 @@ fun TodayScreen(navController: NavController) {
         }
     ) { padding ->
         if (isLoading) {
+            var quoteIndex by remember { mutableIntStateOf((0 until loadingQuotes.size).random()) }
+
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(3000)
+                    quoteIndex = (quoteIndex + 1) % loadingQuotes.size
+                }
+            }
+
             Box(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
@@ -153,11 +195,25 @@ fun TodayScreen(navController: NavController) {
                         color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp
                     )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Thinking about your day…",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Spacer(Modifier.height(24.dp))
+                    AnimatedContent(
+                        targetState = quoteIndex,
+                        transitionSpec = {
+                            fadeIn(animationSpec = androidx.compose.animation.core.tween(500)) togetherWith
+                                fadeOut(animationSpec = androidx.compose.animation.core.tween(500))
+                        },
+                        label = "quote"
+                    ) { index ->
+                        Text(
+                            loadingQuotes[index],
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 48.dp)
+                        )
+                    }
                 }
             }
         } else {
@@ -290,6 +346,65 @@ fun TodayScreen(navController: NavController) {
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+
+    // --- Settings Dialog ---
+    if (showSettings) {
+        var keyInput by remember { mutableStateOf(ai.geminiApiKey ?: "") }
+
+        AlertDialog(
+            onDismissRequest = { showSettings = false },
+            title = { Text("Settings") },
+            text = {
+                Column {
+                    Text(
+                        "Bring your own Gemini API key for faster, higher-quality AI responses. Leave empty to use the free default.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = keyInput,
+                        onValueChange = { keyInput = it },
+                        label = { Text("Gemini API Key") },
+                        placeholder = { Text("AIza...") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (ai.geminiApiKey != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "✓ Using your Gemini key",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    ai.setGeminiApiKey(context, keyInput.takeIf { it.isNotBlank() })
+                    showSettings = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                if (ai.geminiApiKey != null) {
+                    TextButton(onClick = {
+                        ai.setGeminiApiKey(context, null)
+                        keyInput = ""
+                        showSettings = false
+                    }) {
+                        Text("Remove Key")
+                    }
+                } else {
+                    TextButton(onClick = { showSettings = false }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
     }
 }
 
