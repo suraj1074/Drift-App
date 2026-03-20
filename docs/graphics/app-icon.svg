@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="108" fill="#6C63FF"/>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="190" fill="#5B52E0"/>
+  
+  <!-- Inner ring — represents focus/attention -->
+  <circle cx="256" cy="256" r="104" fill="none" stroke="#FFFFFF" stroke-width="12" opacity="0.9"/>
+  
+  <!-- Center dot — the "now" -->
+  <circle cx="256" cy="256" r="28" fill="#FFFFFF"/>
+  
+  <!-- Drift trail — a gentle arc suggesting motion/drift -->
+  <path d="M256,152 Q320,180 332,256" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" opacity="0.9"/>
+  
+  <!-- Small trailing dot — something drifting away -->
+  <circle cx="256" cy="138" r="14" fill="#FFFFFF" opacity="0.6"/>
+</svg>

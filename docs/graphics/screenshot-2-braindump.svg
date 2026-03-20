@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="#FCFBF8"/>
+  
+  <!-- Caption -->
+  <text x="540" y="140" text-anchor="middle" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="48" font-weight="700" fill="#2C2C2C">
+    Dump everything. AI sorts it out.
+  </text>
+  
+  <!-- Phone frame -->
+  <rect x="90" y="220" width="900" height="1620" rx="50" fill="#1A1A2E" stroke="#333" stroke-width="2"/>
+  <rect x="105" y="260" width="870" height="1540" rx="40" fill="#FCFBF8"/>
+  
+  <!-- Status bar -->
+  <text x="160" y="302" font-family="Inter, Arial, sans-serif" font-size="18" fill="#2C2C2C">9:41</text>
+  
+  <!-- Top bar with back arrow -->
+  <text x="160" y="370" font-family="Inter, Arial, sans-serif" font-size="16" fill="#2C2C2C">←</text>
+  <text x="200" y="370" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="500" fill="#2C2C2C">Brain Dump</text>
+  
+  <!-- Heading -->
+  <text x="160" y="450" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="600" fill="#2C2C2C" letter-spacing="-0.3">
+    What's on your mind?
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="160" y="490" font-family="Inter, Arial, sans-serif" font-size="17" fill="#6B6B6B">
+    Don't organize. Just dump everything — tasks,
+  </text>
+  <text x="160" y="515" font-family="Inter, Arial, sans-serif" font-size="17" fill="#6B6B6B">
+    ideas, worries, plans.
+  </text>
+  
+  <!-- Text input area -->
+  <rect x="130" y="555" width="820" height="380" rx="18" fill="#F5F3EE"/>
+  
+  <!-- Sample text in input -->
+  <text x="165" y="600" font-family="Inter, Arial, sans-serif" font-size="19" fill="#2C2C2C" line-height="28">
+    I need to file my taxes before the
+  </text>
+  <text x="165" y="632" font-family="Inter, Arial, sans-serif" font-size="19" fill="#2C2C2C">
+    deadline, finish reading Atomic Habits,
+  </text>
+  <text x="165" y="664" font-family="Inter, Arial, sans-serif" font-size="19" fill="#2C2C2C">
+    get back into running — maybe 3 times
+  </text>
+  <text x="165" y="696" font-family="Inter, Arial, sans-serif" font-size="19" fill="#2C2C2C">
+    a week, call mom this weekend, and
+  </text>
+  <text x="165" y="728" font-family="Inter, Arial, sans-serif" font-size="19" fill="#2C2C2C">
+    start that side project I keep thinking
+  </text>
+  <text x="165" y="760" font-family="Inter, Arial, sans-serif" font-size="19" fill="#2C2C2C">
+    about
+  </text>
+  
+  <!-- Cursor blink -->
+  <rect x="220" y="745" width="2" height="22" fill="#5B5BD6"/>
+  
+  <!-- Dump button -->
+  <rect x="130" y="970" width="820" height="60" rx="14" fill="#5B5BD6"/>
+  <text x="540" y="1008" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF">
+    Dump it ✨
+  </text>
+</svg>

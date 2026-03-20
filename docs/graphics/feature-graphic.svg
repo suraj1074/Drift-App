@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5B5BD6"/>
+      <stop offset="100%" style="stop-color:#6C63FF"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background gradient -->
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  
+  <!-- Subtle decorative circles -->
+  <circle cx="850" cy="380" r="200" fill="#FFFFFF" opacity="0.03"/>
+  <circle cx="180" cy="120" r="150" fill="#FFFFFF" opacity="0.03"/>
+  
+  <!-- Watermark icon bottom-right -->
+  <g transform="translate(920, 400) scale(0.6)" opacity="0.12">
+    <circle cx="0" cy="0" r="40" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+    <circle cx="0" cy="0" r="8" fill="#FFFFFF"/>
+    <path d="M0,-22 Q14,−16 16,0" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="-26" r="4" fill="#FFFFFF" opacity="0.6"/>
+  </g>
+
+  <!-- Main text -->
+  <text x="512" y="210" text-anchor="middle" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="52" font-weight="700" fill="#FFFFFF" letter-spacing="-1">
+    Two things. Not twenty.
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="512" y="275" text-anchor="middle" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="24" font-weight="400" fill="#FFFFFF" opacity="0.8">
+    AI-powered focus for what actually matters.
+  </text>
+  
+  <!-- Small tagline -->
+  <text x="512" y="340" text-anchor="middle" font-family="Inter, Helvetica Neue, Arial, sans-serif" font-size="16" font-weight="500" fill="#F5A623" opacity="0.9" letter-spacing="3">
+    DRIFT
+  </text>
+</svg>
